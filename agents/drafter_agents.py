@@ -230,9 +230,10 @@ def _repair_traceability_min_fields(
                         )
         if not evidence_items:
             fallback_elements = claim["elements"] or [f"权利要求{claim_no}整体技术特征"]
+            feature_text = _ensure_min_text(str(fallback_elements[0])[:200], 4, "技术特征待补全")
             evidence_items = [
                 {
-                    "feature_text": str(fallback_elements[0])[:200],
+                    "feature_text": feature_text,
                     "verbatim_quote": "原文支持片段待人工复核。",
                     "support_level": "Unsupported",
                     "reasoning": "模型返回半结构内容，系统已自动补全最小可用溯源结构。",
@@ -270,12 +271,13 @@ def _build_minimal_traceability_report(
     for claim in claim_rows:
         claim_no = int(claim["claim_number"])
         feature = claim["elements"][0] if claim["elements"] else f"权利要求{claim_no}整体技术特征"
+        feature_text = _ensure_min_text(str(feature)[:200], 4, "技术特征待补全")
         reports.append(
             {
                 "claim_number": claim_no,
                 "elements_evidence": [
                     {
-                        "feature_text": str(feature)[:200],
+                        "feature_text": feature_text,
                         "verbatim_quote": "原文支持片段待人工复核。",
                         "support_level": "Unsupported",
                         "reasoning": "模型输出解析失败，系统已生成最小可用溯源结构以避免流程中断。",
@@ -325,6 +327,16 @@ def _extract_claim_rows_for_traceability(claims_payload: dict[str, Any] | None) 
     if rows:
         return rows
     return [{"claim_number": 1, "elements": ["权利要求整体技术特征"]}]
+
+
+def _ensure_min_text(value: str, min_len: int, fallback: str) -> str:
+    text = (value or "").strip()
+    if len(text) >= min_len:
+        return text
+    base = (fallback or "待补全").strip()
+    if len(base) < min_len:
+        base = (base + "补全项")[: max(min_len, len(base))]
+    return base
 
 
 def revise_claims_node(
